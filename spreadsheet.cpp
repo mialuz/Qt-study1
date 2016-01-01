@@ -30,12 +30,13 @@ QString Spreadsheet::currentFormula() const
     return formula(currentRow(), currentColumn());
 }
 
+//返回一个选择范围列表；
 QTableWidgetSelectionRange Spreadsheet::selectedRange() const
 {
     QList<QTableWidgetSelectionRange> ranges = selectedRanges();
-    if (ranges.isEmpty())
+    if (ranges.isEmpty())                   //如果为空选择，选择当前单元格
         return QTableWidgetSelectionRange();
-    return ranges.first();
+    return ranges.first();   //返回第一个选择
 }
 
 void Spreadsheet::clear()
@@ -59,6 +60,7 @@ void Spreadsheet::clear()
     setCurrentCell(0, 0);
 }
 
+//读取一个文件，
 bool Spreadsheet::readFile(const QString &fileName)
 {
     QFile file(fileName);
@@ -96,6 +98,7 @@ bool Spreadsheet::readFile(const QString &fileName)
     return true;
 }
 
+//把文件输出到磁盘中，输出成功返回true，否则返回false；
 bool Spreadsheet::writeFile(const QString &fileName)
 {
     QFile file(fileName);
@@ -107,12 +110,14 @@ bool Spreadsheet::writeFile(const QString &fileName)
         return false;
     }
 
-    QDataStream out(&file);
+    QDataStream out(&file);   //QDataStream对象out,由它操作file这个QFile对象，并使用该对象输出数据
     out.setVersion(QDataStream::Qt_4_3);
 
     out << quint32(MagicNumber);
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
+    //将应用程序的光标修改为标准的等待光标（通常为一个沙漏），输出完毕后，恢复；
+    
     for (int row = 0; row < RowCount; ++row) {
         for (int column = 0; column < ColumnCount; ++column) {
             QString str = formula(row, column);
@@ -124,6 +129,7 @@ bool Spreadsheet::writeFile(const QString &fileName)
     return true;
 }
 
+//工具菜单-排序
 void Spreadsheet::sort(const SpreadsheetCompare &compare)
 {
     QList<QStringList> rows;
@@ -138,7 +144,7 @@ void Spreadsheet::sort(const SpreadsheetCompare &compare)
         rows.append(row);
     }
 
-    qStableSort(rows.begin(), rows.end(), compare);
+    qStableSort(rows.begin(), rows.end(), compare);  //算法，根据公式而不是根据值来进行简单排序
 
     for (i = 0; i < range.rowCount(); ++i) {
         for (int j = 0; j < range.columnCount(); ++j)
@@ -146,21 +152,24 @@ void Spreadsheet::sort(const SpreadsheetCompare &compare)
                        rows[i][j]);
     }
 
-    clearSelection();
+    clearSelection();  //取消选择
     somethingChanged();
 }
 
+//编辑菜单-剪切
 void Spreadsheet::cut()
 {
     copy();
     del();
 }
 
+//编辑菜单-复制
 void Spreadsheet::copy()
 {
-    QTableWidgetSelectionRange range = selectedRange();
+    QTableWidgetSelectionRange range = selectedRange();   //返回一个选择范围列表
     QString str;
 
+    //行i，列j
     for (int i = 0; i < range.rowCount(); ++i) {
         if (i > 0)
             str += "\n";
@@ -173,14 +182,16 @@ void Spreadsheet::copy()
     QApplication::clipboard()->setText(str);
 }
 
+//编辑菜单-粘帖
 void Spreadsheet::paste()
 {
     QTableWidgetSelectionRange range = selectedRange();
-    QString str = QApplication::clipboard()->text();
-    QStringList rows = str.split('\n');
-    int numRows = rows.count();
-    int numColumns = rows.first().count('\t') + 1;
+    QString str = QApplication::clipboard()->text(); //从剪贴板取回文本
+    QStringList rows = str.split('\n');  //将字符串变成一个QStringList，每行都会变成这个列表中的一个字符串；
+    int numRows = rows.count();                         //行数
+    int numColumns = rows.first().count('\t') + 1;      //列数
 
+    //如果选择的要粘入区域不符合剪切的区域，则报错
     if (range.rowCount() * range.columnCount() != 1
             && (range.rowCount() != numRows
                 || range.columnCount() != numColumns)) {
@@ -191,7 +202,7 @@ void Spreadsheet::paste()
     }
 
     for (int i = 0; i < numRows; ++i) {
-        QStringList columns = rows[i].split('\t');
+        QStringList columns = rows[i].split('\t');  //将行字符串变成一个个的字符
         for (int j = 0; j < numColumns; ++j) {
             int row = range.topRow() + i;
             int column = range.leftColumn() + j;
@@ -202,6 +213,7 @@ void Spreadsheet::paste()
     somethingChanged();
 }
 
+//编辑菜单-删除
 void Spreadsheet::del()
 {
     QList<QTableWidgetItem *> items = selectedItems();
@@ -212,16 +224,19 @@ void Spreadsheet::del()
     }
 }
 
+//选中当前行
 void Spreadsheet::selectCurrentRow()
 {
     selectRow(currentRow());
 }
 
+//选中当前列
 void Spreadsheet::selectCurrentColumn()
 {
     selectColumn(currentColumn());
 }
 
+//工具菜单-重新计算
 void Spreadsheet::recalculate()
 {
     for (int row = 0; row < RowCount; ++row) {
@@ -233,6 +248,7 @@ void Spreadsheet::recalculate()
     viewport()->update();
 }
 
+//选项-重新计算整个电子制表软件，以确保它是最新的
 void Spreadsheet::setAutoRecalculate(bool recalc)
 {
     autoRecalc = recalc;
@@ -240,6 +256,7 @@ void Spreadsheet::setAutoRecalculate(bool recalc)
         recalculate();
 }
 
+//查找下一个，会遍历一遍所有的单元格，从行到列
 void Spreadsheet::findNext(const QString &str, Qt::CaseSensitivity cs)
 {
     int row = currentRow();
@@ -258,9 +275,10 @@ void Spreadsheet::findNext(const QString &str, Qt::CaseSensitivity cs)
         column = 0;
         ++row;
     }
-    QApplication::beep();
+    QApplication::beep();  //如果没有找到匹配的单元格，就发出beep声提示搜索完毕，表明匹配没有成功
 }
 
+//查找上一个
 void Spreadsheet::findPrevious(const QString &str,
                                Qt::CaseSensitivity cs)
 {
