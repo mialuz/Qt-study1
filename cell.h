@@ -21,7 +21,7 @@ private:
     QVariant evalTerm(const QString &str, int &pos) const;
     QVariant evalFactor(const QString &str, int &pos) const;
 
-    mutable QVariant cachedValue;
+    mutable QVariant cachedValue;  //C++中的关键字 mutable
     mutable bool cacheIsDirty;
 };
 
